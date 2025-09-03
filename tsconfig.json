@@ -8,9 +8,9 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "module": "ES2020",
+    "module": "NodeNext",
     "skipLibCheck": true,
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "verbatimModuleSyntax": false,

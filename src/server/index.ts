@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { CodeforcesAPI } from '../api/codeforces';
+import { CodeforcesAPI } from '../api/codeforces.js';
 import { getConfig } from '../config/index.js';
 import { Contest, Problem, User, Submission } from '../types/index.js';
 
