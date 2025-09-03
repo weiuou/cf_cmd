@@ -33,7 +33,7 @@ F**k you Cloudflare authentication
 #### Linux/macOS
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/weiuou/cf_cmd.git
 cd cf_cmd
 
 # 安装依赖
@@ -46,7 +46,7 @@ npm run build
 #### Windows
 ```cmd
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/weiuou/cf_cmd.git
 cd cf_cmd
 
 # 安装依赖
@@ -63,7 +63,7 @@ npm run build
 #### Linux/macOS
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/weiuou/cf_cmd.git
 cd cf_cmd
 
 # 安装依赖
@@ -78,7 +78,7 @@ sudo npm link
 
 ```cmd
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/weiuou/cf_cmd.git
 cd cf_cmd
 
 # 安装依赖
