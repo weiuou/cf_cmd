@@ -213,7 +213,7 @@ cf user info tourist
 cf config show
 ```
 
-### Web 服务
+### Web 服务（推荐直接使用[Codeforces api](https://codeforces.com/apiHelp)而不是本项目）
 
 ```bash
 # 启动服务器
