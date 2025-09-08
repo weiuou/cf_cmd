@@ -134,14 +134,16 @@ export const userCommand = new Command('user')
       .option('--format <format>', '输出格式 (table|json)', 'table')
       .option('--verdict <verdict>', '按判题结果筛选 (OK|WRONG_ANSWER|TIME_LIMIT_EXCEEDED等)')
       .option('--language <language>', '按编程语言筛选')
+      .option('--no-cache', '不使用缓存，直接从网络获取最新数据')
       .action(async (handle, options) => {
         try {
           console.log(`正在获取用户 ${handle} 的提交记录...`);
           
           const from = parseInt(options.from);
           const count = parseInt(options.count);
+          const useCache = !options.noCache; // 如果设置了 --no-cache 选项，则不使用缓存
           
-          let submissions = await codeforcesAPI.getUserSubmissions(handle, from, count);
+          let submissions = await codeforcesAPI.getUserSubmissions(handle, from, count, useCache);
           
           // 按判题结果筛选
           if (options.verdict) {
@@ -179,14 +181,17 @@ export const userCommand = new Command('user')
       .description('获取用户统计信息')
       .argument('<handle>', '用户名')
       .option('-l, --limit <number>', '分析最近的提交数量', '100')
+      .option('--no-cache', '不使用缓存，直接从网络获取最新数据')
       .action(async (handle, options) => {
         try {
           console.log(`正在分析用户 ${handle} 的统计信息...`);
           
           const limit = parseInt(options.limit);
+          const useCache = !options.noCache; // 如果设置了 --no-cache 选项，则不使用缓存
+          
           const [userInfo, submissions] = await Promise.all([
             codeforcesAPI.getUserInfo([handle]),
-            codeforcesAPI.getUserSubmissions(handle, 1, limit)
+            codeforcesAPI.getUserSubmissions(handle, 1, limit, useCache)
           ]);
           
           if (userInfo.length === 0) {

@@ -62,10 +62,10 @@ export class CodeforcesAPI {
                          response.data.includes('class="lang-chooser"') && 
                          response.data.includes('class="avatar"');
       
-      console.log('登录状态检查:', isLoggedIn ? '已登录' : '未登录');
+      // 检查登录状态
       return isLoggedIn;
     } catch (error) {
-      console.error('检查登录状态时出错:', error);
+      // 检查登录状态时出错
       return false;
     }
   }
@@ -121,7 +121,7 @@ export class CodeforcesAPI {
         };
       }
     } catch (error: any) {
-      console.error('加载登录信息时出错:', error.message);
+      // 加载登录信息时出错
       return {
         success: false,
         error: `加载登录信息时出错: ${error.message}`
@@ -144,7 +144,7 @@ export class CodeforcesAPI {
       // 清除之前的Cookie
       httpClient.clearCookies();
       
-      console.log('正在使用浏览器模拟登录...');
+      // 使用浏览器模拟登录
       let browser;
       
       try {
@@ -172,7 +172,7 @@ export class CodeforcesAPI {
           timeout: 30000
         });
         
-        console.log('HTTP状态码:', response?.status());
+        // HTTP状态码检查
         
         // 自动填写用户名和密码
         if (credentials.handleOrEmail && credentials.password) {
@@ -187,8 +187,7 @@ export class CodeforcesAPI {
           }, credentials.handleOrEmail, credentials.password);
         }
         
-        console.log('请在浏览器中完成登录操作，包括验证码（如果有）...');
-        console.log('登录成功后，浏览器将自动关闭...');
+        // 等待用户在浏览器中完成登录操作
         
         // 等待用户在浏览器中完成登录
         // 等待重定向到主页或用户页面，表示登录成功
@@ -221,7 +220,7 @@ export class CodeforcesAPI {
           return { success: false, error: '无法确定登录状态' };
         });
         
-        console.log('登录状态检查结果:', isLoggedIn);
+        // 登录状态检查结果
         
         if (isLoggedIn.success && isLoggedIn.handle) {
           // 提取Cookies
@@ -250,9 +249,9 @@ export class CodeforcesAPI {
           
           const cookiesFile = path.join(configDir, 'cookies.json');
           fs.writeFileSync(cookiesFile, JSON.stringify(cookiesData, null, 2));
-          console.log('Cookies saved to file');
+          // Cookies已保存到文件
           
-          console.log(`成功登录为: ${isLoggedIn.handle}`);
+          // 成功登录
           await browser.close();
           
           return {
@@ -261,7 +260,7 @@ export class CodeforcesAPI {
             cookies: cookieString
           };
         } else {
-          console.error('登录失败:', isLoggedIn.error || '未知错误');
+          // 登录失败
           await browser.close();
           return {
             success: false,
@@ -269,14 +268,14 @@ export class CodeforcesAPI {
           };
         }
       } catch (puppeteerError: any) {
-        console.error('浏览器模拟登录错误:', puppeteerError.message);
+        // 浏览器模拟登录错误
         if (browser) {
           await browser.close();
         }
         throw puppeteerError;
       }
     } catch (error: any) {
-      console.error('登录过程中发生错误:', error.message);
+      // 登录过程中发生错误
       return {
         success: false,
         error: `登录过程中发生错误: ${error.message}`
@@ -292,7 +291,7 @@ export class CodeforcesAPI {
     // 尝试从缓存获取
     const cached = cacheManager.get<Contest[]>(cacheKey);
     if (cached) {
-      console.log('Retrieved contests from cache');
+      // 从缓存获取竞赛列表
       return cached;
     }
 
@@ -307,7 +306,7 @@ export class CodeforcesAPI {
         throw new Error(response.comment || 'Failed to fetch contests');
       }
     } catch (error: any) {
-      console.error('Error fetching contests:', error.message);
+      // 获取竞赛列表出错
       throw error;
     }
   }
@@ -322,7 +321,7 @@ export class CodeforcesAPI {
     // 尝试从缓存获取
     const cached = cacheManager.get<{ problems: Problem[]; problemStatistics: any[] }>(cacheKey);
     if (cached) {
-      console.log('Retrieved problems from cache');
+      // 从缓存获取题目列表
       return cached;
     }
 
@@ -342,7 +341,7 @@ export class CodeforcesAPI {
         throw new Error(response.comment || 'Failed to fetch problems');
       }
     } catch (error: any) {
-      console.error('Error fetching problems:', error.message);
+      // 获取题目列表出错
       throw error;
     }
   }
@@ -361,7 +360,7 @@ export class CodeforcesAPI {
     // 尝试从缓存获取
     const cached = cacheManager.get<{ contest: Contest; problems: Problem[]; rows: RanklistRow[] }>(cacheKey);
     if (cached) {
-      console.log('Retrieved standings from cache');
+      // 从缓存获取排名
       return cached;
     }
 
@@ -381,7 +380,7 @@ export class CodeforcesAPI {
         throw new Error(response.comment || 'Failed to fetch contest standings');
       }
     } catch (error: any) {
-      console.error('Error fetching contest standings:', error.message);
+      // 获取竞赛排名出错
       throw error;
     }
   }
@@ -394,7 +393,12 @@ export class CodeforcesAPI {
    * @param params 提交参数
    * @returns 提交结果
    */
-  async submitCode(params: SubmitCodeParams): Promise<SubmitResult> {
+  /**
+   * 使用Puppeteer模拟浏览器提交代码
+   * @param params 提交参数
+   * @returns 提交结果
+   */
+  async submitCodeWithPuppeteer(params: SubmitCodeParams): Promise<SubmitResult> {
     try {
       // 检查是否已登录
       if (!httpClient.getCookies().length) {
@@ -404,104 +408,433 @@ export class CodeforcesAPI {
         };
       }
       
-      // 1. 构建提交URL
-      let submitUrl = '';
-      if (params.groupId) {
-        // 小组比赛
-        submitUrl = `/group/${params.groupId}/contest/${params.contestId}/submit`;
-      } else {
-        // 普通比赛
-        submitUrl = `/contest/${params.contestId}/submit`;
-      }
+      // 启动浏览器模拟提交代码
+      let browser;
       
-      // 2. 获取提交页面和CSRF令牌
-      console.log(`正在获取提交页面: ${submitUrl}`);
-      const submitPageResponse = await httpClient.request({
-        method: 'GET',
-        url: `https://codeforces.com${submitUrl}`
-      });
-      
-      const csrfToken = httpClient.extractCsrfToken(submitPageResponse.data);
-      if (!csrfToken) {
-        throw new Error('无法获取CSRF令牌');
-      }
-      console.log('成功获取CSRF令牌:', csrfToken);
-      
-      // 3. 提交代码
-      console.log('正在提交代码...');
-      const formData = new URLSearchParams();
-      formData.append('csrf_token', csrfToken);
-      formData.append('ftaa', this.ftaa);
-      formData.append('bfaa', this.bfaa);
-      formData.append('action', 'submitSolutionFormSubmitted');
-      formData.append('submittedProblemIndex', params.problemIndex);
-      formData.append('programTypeId', params.programTypeId.toString());
-      formData.append('contestId', params.contestId.toString());
-      formData.append('source', params.source);
-      formData.append('tabSize', '4');
-      formData.append('_tta', '594');
-      formData.append('sourceCodeConfirmed', 'true');
-      
-      const submitResponse = await httpClient.request({
-        method: 'POST',
-        url: `https://codeforces.com${submitUrl}?csrf_token=${csrfToken}`,
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        data: formData.toString(),
-        maxRedirects: 0,
-        validateStatus: (status) => status >= 200 && status < 400
-      });
-      
-      // 4. 验证提交结果
-      if (submitResponse.status === 302) {
-        // 重定向表示提交成功
-        console.log('代码提交成功');
+      try {
+        // 启动浏览器
+        browser = await puppeteer.launch({
+          headless: true, 
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage'
+          ]
+        });
         
-        // 尝试从重定向URL中提取提交ID
-        const location = submitResponse.headers.location;
-        let submissionId: number | undefined;
+        const page = await browser.newPage();
         
-        if (location) {
-          const match = location.match(/submission\/(\d+)/i);
-          if (match && match[1]) {
-            submissionId = parseInt(match[1], 10);
+        // 设置用户代理
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36');
+        
+        // 设置cookies
+        const cookies = httpClient.getCookies().map(cookie => {
+          const [name, value] = cookie.split('=');
+          return { name, value, domain: 'codeforces.com', path: '/' };
+        });
+        
+        await page.setCookie(...cookies);
+        
+        // 构建提交URL
+        let submitUrl = '';
+        if (params.groupId) {
+          // 小组比赛
+          submitUrl = `/group/${params.groupId}/contest/${params.contestId}/submit`;
+        } else {
+          // 普通比赛
+          submitUrl = `/contest/${params.contestId}/submit`;
+        }
+        
+        // 访问提交页面
+        await page.goto(`https://codeforces.com${submitUrl}`, {
+          waitUntil: 'networkidle2',
+          timeout: 60000 // 增加超时时间到60秒
+        });
+        
+        // 等待页面加载完成，使用更通用的选择器
+        await page.waitForSelector('form', { timeout: 30000 });
+        
+        // 额外等待一段时间，确保页面完全加载
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        
+        // 分析页面表单元素
+        const formElements = await page.evaluate(() => {
+          const forms = document.querySelectorAll('form');
+          return Array.from(forms).map(form => ({
+            id: form.id,
+            className: form.className,
+            action: form.action,
+            method: form.method,
+            elements: Array.from(form.elements).map(el => ({
+              name: (el as any).name,
+              id: (el as any).id,
+              type: (el as any).type,
+              tagName: (el as any).tagName
+            }))
+          }));
+        });
+        
+        // 选择题目 - 使用更通用的选择器
+        try {
+          await page.select('select[name="submittedProblemIndex"]', params.problemIndex);
+        } catch (e) {
+          // 选择题目失败，尝试备用方法
+          // 备用方法：使用页面评估
+          await page.evaluate((problemIndex) => {
+            const selects = document.querySelectorAll('select');
+            for (const select of selects) {
+              if (select.name === 'submittedProblemIndex' || 
+                  select.id === 'submittedProblemIndex' || 
+                  Array.from(select.options).some(opt => opt.value === problemIndex)) {
+                select.value = problemIndex;
+                return;
+              }
+            }
+          }, params.problemIndex);
+        }
+        
+        // 选择编程语言 - 使用更通用的选择器
+        try {
+          await page.select('select[name="programTypeId"]', params.programTypeId.toString());
+        } catch (e) {
+          // 选择语言失败，尝试备用方法
+          // 备用方法：使用页面评估
+          await page.evaluate((programTypeId) => {
+            const selects = document.querySelectorAll('select');
+            for (const select of selects) {
+              if (select.name === 'programTypeId' || 
+                  select.id === 'programTypeId' || 
+                  Array.from(select.options).some(opt => opt.value === programTypeId)) {
+                select.value = programTypeId;
+                return;
+              }
+            }
+          }, params.programTypeId.toString());
+        }
+        
+        // 输入代码 - 使用更直接的方法，优先使用ID
+        try {
+          // 首先尝试使用ID选择器，这是从页面分析中发现的
+          const sourceTextareaSelector = '#sourceCodeTextarea';
+          await page.waitForSelector(sourceTextareaSelector, { timeout: 10000 });
+          
+          // 清除现有内容
+          await page.evaluate(() => {
+            const textarea = document.querySelector('#sourceCodeTextarea') as HTMLTextAreaElement;
+            if (textarea) {
+              textarea.value = '';
+            }
+          });
+          
+          // 直接输入代码
+          await page.focus(sourceTextareaSelector);
+          await page.type(sourceTextareaSelector, params.source, { delay: 10 });
+          
+          // 验证代码是否正确设置
+          const codeLength = await page.evaluate(() => {
+            const textarea = document.querySelector('#sourceCodeTextarea') as HTMLTextAreaElement;
+            return textarea ? textarea.value.length : 0;
+          });
+          
+          // 成功设置代码
+          
+          // 如果代码长度不匹配，尝试使用clipboard粘贴
+          if (codeLength !== params.source.length) {
+            // 代码长度不匹配，尝试使用clipboard粘贴
+            await page.evaluate((source) => {
+              const textarea = document.querySelector('#sourceCodeTextarea') as HTMLTextAreaElement;
+              if (textarea) {
+                textarea.value = source;
+              }
+            }, params.source);
+            
+            // 再次验证
+            const newCodeLength = await page.evaluate(() => {
+              const textarea = document.querySelector('#sourceCodeTextarea') as HTMLTextAreaElement;
+              return textarea ? textarea.value.length : 0;
+            });
+            
+            // 使用clipboard后代码长度检查
+          }
+        } catch (e) {
+          // 直接输入代码失败，尝试备用方法
+          
+          // 备用方法：使用evaluate
+          const codeSet = await page.evaluate((source) => {
+            // 尝试多种可能的选择器
+            const textareas = document.querySelectorAll('textarea');
+            let sourceTextarea = null;
+            
+            // 首先尝试通过name或id查找
+            for (const textarea of textareas) {
+              if (textarea.name === 'source' || textarea.id === 'sourceCodeTextarea') {
+                sourceTextarea = textarea;
+                break;
+              }
+            }
+            
+            // 如果没找到，尝试第一个textarea
+            if (!sourceTextarea && textareas.length > 0) {
+              sourceTextarea = textareas[0];
+            }
+            
+            // 设置代码
+            if (sourceTextarea) {
+              sourceTextarea.value = source;
+              return true;
+            }
+            return false;
+          }, params.source);
+          
+          if (codeSet) {
+            // 使用备用方法成功设置代码
+          } else {
+            // 未找到代码输入框
           }
         }
         
-        return {
-          success: true,
-          submissionId
-        };
-      }
-      
-      // 检查错误信息
-      const $ = cheerio.load(submitResponse.data);
-      const errorElement = $('.error');
-      let errorMessage = errorElement.text().trim();
-      
-      if (!errorMessage) {
-        // 尝试使用正则表达式提取错误信息
-        const errorMatch = submitResponse.data.match(/error[a-zA-Z_\-\ ]*">(.*?)<\/span>/i);
-        if (errorMatch && errorMatch[1]) {
-          errorMessage = errorMatch[1];
-        } else {
-          errorMessage = '提交失败，但未找到具体错误信息';
+        // 额外等待，确保代码设置完成
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 勾选确认代码 - 使用更通用的选择器
+        try {
+          // 尝试多种可能的选择器
+          const confirmCheckbox = await page.evaluate(() => {
+            // 尝试通过name查找
+            let checkbox = document.querySelector('input[name="sourceCodeConfirmed"]');
+            if (checkbox) return true;
+            
+            // 尝试通过id查找
+            checkbox = document.querySelector('#sourceCodeConfirmed');
+            if (checkbox) return true;
+            
+            // 尝试通过类型和文本查找
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            for (const cb of checkboxes) {
+              const label = cb.parentElement?.textContent || '';
+              if (label.toLowerCase().includes('confirm') || label.toLowerCase().includes('确认')) {
+                (cb as HTMLInputElement).checked = true;
+                return true;
+              }
+            }
+            
+            return false;
+          });
+          
+          if (confirmCheckbox) {
+            // 成功勾选确认代码复选框
+          } else {
+            // 未找到确认代码复选框，继续提交
+          }
+        } catch (e) {
+          // 勾选确认代码失败，继续提交
         }
+        
+        // 提交表单
+        
+        // 查找并点击提交按钮 - 直接使用ID
+        
+        try {
+          // 获取页面上所有按钮信息
+          const buttonInfo = await page.evaluate(() => {
+            const buttons = document.querySelectorAll('button, input[type="button"], input[type="submit"]');
+            return Array.from(buttons).map(btn => {
+              const text = btn.textContent || (btn as HTMLInputElement).value || '';
+              return `按钮: ${text} - 类型: ${btn.tagName} - ID: ${btn.id} - 类: ${btn.className}`;
+            });
+          });
+          
+          // 直接使用ID选择器点击提交按钮
+          const submitButtonSelector = '#singlePageSubmitButton';
+          await page.waitForSelector(submitButtonSelector, { timeout: 10000 });
+          
+          // 找到提交按钮
+          
+          // 确保表单验证通过
+          await page.evaluate(() => {
+            // 检查是否有sourceCodeConfirmed复选框，如果有则勾选
+            const confirmCheckbox = document.querySelector('input[name="sourceCodeConfirmed"]') as HTMLInputElement;
+            if (confirmCheckbox) {
+              confirmCheckbox.checked = true;
+            }
+            
+            // 确保代码已设置
+            const textarea = document.querySelector('#sourceCodeTextarea') as HTMLTextAreaElement;
+            if (textarea && !textarea.value) {
+              // 代码输入框为空
+            }
+          });
+          
+          // 额外等待，确保所有操作完成
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // 创建一个Promise，在点击按钮的同时等待导航
+          await Promise.all([
+            page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(e => {
+              // 等待导航超时
+            }),
+            page.click(submitButtonSelector)
+          ]);
+          
+          // 成功点击提交按钮
+          
+          // 额外等待一段时间，确保页面完全加载
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          
+        } catch (e) {
+          // 点击提交按钮过程中出错
+          
+          // 备用方法：使用evaluate直接提交表单
+          
+          const formSubmitted = await page.evaluate(() => {
+            // 尝试提交表单
+            const form = document.querySelector('form');
+            if (form) {
+              form.submit();
+              return true;
+            }
+            return false;
+          });
+          
+          if (formSubmitted) {
+            // 使用表单提交方法成功提交
+            // 等待导航完成
+            await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }).catch(e => {
+              // 等待导航超时，继续检查提交结果
+            });
+            
+            // 额外等待一段时间，确保页面完全加载
+            await new Promise(resolve => setTimeout(resolve, 5000));
+          } else {
+            // 所有提交方法均失败
+          }
+        }
+        
+        // 检查是否提交成功
+        const currentUrl = page.url();
+        
+        // 等待一段时间，确保页面完全加载
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // 检查是否跳转到我的提交页面
+        if (currentUrl.includes('/my') || currentUrl.includes('/status') || currentUrl.includes('/submissions')) {
+          // 代码提交成功
+          
+          // 尝试获取提交ID
+          const submissionId = await page.evaluate(() => {
+            const rows = document.querySelectorAll('table.status-frame-datatable tr');
+            if (rows.length > 1) {
+              const firstRow = rows[1];
+              const idCell = firstRow.querySelector('td:first-child');
+              if (idCell && idCell.textContent) {
+                return idCell.textContent.trim();
+              }
+            }
+            return null;
+          });
+          
+          await browser.close();
+          
+          return {
+            success: true,
+            submissionId: submissionId ? parseInt(submissionId) : undefined
+          };
+        }
+        
+        // 如果跳转到首页，可能是登录状态已过期
+        if (currentUrl === 'https://codeforces.com/' || currentUrl === 'https://codeforces.com') {
+          // 提交后跳转到首页，可能需要重新登录
+          // 尝试查看页面内容，检查是否有登录按钮
+          const needLogin = await page.evaluate(() => {
+            const loginLink = document.querySelector('a[href="/enter"]');
+            return !!loginLink;
+          });
+          
+          if (needLogin) {
+            await browser.close();
+            return {
+              success: false,
+              error: '登录状态已过期，请重新登录'
+            };
+          }
+        }
+        
+        // 检查错误信息
+        const errorMessage = await page.evaluate(() => {
+          // 尝试多种可能的错误元素选择器
+          const errorSelectors = [
+            '.error', 
+            '.alert-error', 
+            '.alert-danger',
+            '.error-message',
+            'div[class*="error"]',
+            'span[class*="error"]'
+          ];
+          
+          for (const selector of errorSelectors) {
+            const errorElement = document.querySelector(selector);
+            if (errorElement && errorElement.textContent) {
+              return errorElement.textContent.trim();
+            }
+          }
+          
+          // 检查页面内容中是否包含错误信息
+          const bodyText = document.body.textContent || '';
+          if (bodyText.includes('error') || bodyText.includes('Error') || 
+              bodyText.includes('失败') || bodyText.includes('错误')) {
+            // 尝试提取错误上下文
+            const errorContext = bodyText.split(/error|Error|失败|错误/)[1]?.substring(0, 100) || '';
+            return `可能的错误信息: ${errorContext}`;
+          }
+          
+          return null;
+        });
+        
+        // 保存页面截图
+        try {
+          await page.screenshot({ path: 'submission_error.png' });
+        } catch (e) {
+          // 保存截图失败
+        }
+        
+        await browser.close();
+        
+        if (errorMessage) {
+          // 提交失败
+          return {
+            success: false,
+            error: errorMessage
+          };
+        }
+        
+        return {
+          success: false,
+          error: '提交失败，但未找到具体错误信息'
+        };
+      } catch (puppeteerError: any) {
+        // 浏览器模拟提交错误
+        if (browser) {
+          await browser.close();
+        }
+        throw puppeteerError;
       }
-      
-      console.error('提交失败:', errorMessage);
-      return {
-        success: false,
-        error: errorMessage
-      };
     } catch (error: any) {
-      console.error('提交过程中发生错误:', error.message);
+      // 提交过程中发生错误
       return {
         success: false,
         error: `提交过程中发生错误: ${error.message}`
       };
     }
+  }
+  
+  /**
+   * 提交代码到Codeforces
+   * @param params 提交参数
+   * @returns 提交结果
+   */
+  async submitCode(params: SubmitCodeParams): Promise<SubmitResult> {
+    // 使用Puppeteer模拟浏览器提交代码
+    return this.submitCodeWithPuppeteer(params);
   }
   
   async getUserInfo(handles: string[]): Promise<User[]> {
@@ -511,7 +844,7 @@ export class CodeforcesAPI {
     // 尝试从缓存获取
     const cached = cacheManager.get<User[]>(cacheKey);
     if (cached) {
-      console.log('Retrieved user info from cache');
+      // 从缓存获取用户信息
       return cached;
     }
 
@@ -526,26 +859,33 @@ export class CodeforcesAPI {
         throw new Error(response.comment || 'Failed to fetch user info');
       }
     } catch (error: any) {
-      console.error('Error fetching user info:', error.message);
+      // 获取用户信息出错
       throw error;
     }
   }
 
   /**
    * 获取用户提交记录
+   * @param handle 用户名
+   * @param from 起始位置
+   * @param count 返回数量
+   * @param useCache 是否使用缓存，默认为false。当为false时跳过缓存读取，直接从网络获取最新内容
    */
   async getUserSubmissions(
     handle: string,
     from?: number,
-    count?: number
+    count?: number,
+    useCache: boolean = false
   ): Promise<Submission[]> {
     const cacheKey = `submissions_${handle}_${from || 1}_${count || 0}`;
     
-    // 尝试从缓存获取
-    const cached = cacheManager.get<Submission[]>(cacheKey);
-    if (cached) {
-      console.log('Retrieved submissions from cache');
-      return cached;
+    // 只有当useCache为true时才尝试从缓存获取
+    if (useCache) {
+      const cached = cacheManager.get<Submission[]>(cacheKey);
+      if (cached) {
+        // 从缓存获取提交记录
+        return cached;
+      }
     }
 
     try {
@@ -556,14 +896,16 @@ export class CodeforcesAPI {
       const response = await httpClient.get<Submission[]>('/user.status', params);
       
       if (response.status === 'OK' && response.result) {
-        // 缓存结果（较短的缓存时间）
-        cacheManager.set(cacheKey, response.result, 120 * 1000); // 2分钟
+        // 只有当useCache为true时才缓存结果
+        if (useCache) {
+          cacheManager.set(cacheKey, response.result, 120 * 1000); // 2分钟
+        }
         return response.result;
       } else {
         throw new Error(response.comment || 'Failed to fetch user submissions');
       }
     } catch (error: any) {
-      console.error('Error fetching user submissions:', error.message);
+      // 获取用户提交记录出错
       throw error;
     }
   }
@@ -576,7 +918,7 @@ export class CodeforcesAPI {
       const standings = await this.getContestStandings(contestId, 1, 1);
       return standings.problems;
     } catch (error: any) {
-      console.error('Error fetching contest problems:', error.message);
+      // 获取竞赛题目出错
       throw error;
     }
   }
@@ -594,14 +936,14 @@ export class CodeforcesAPI {
     if (useCache) {
       const cached = cacheManager.get<ProblemStatement>(cacheKey);
       if (cached) {
-        console.log('Retrieved problem statement from cache');
+        // 从缓存获取题目描述
         return cached;
       }
     }
 
     // 直接尝试网页抓取获取完整题面
     try {
-      console.log('正在使用浏览器抓取...');
+      // 使用浏览器抓取
       const url = `https://codeforces.com/contest/${contestId}/problem/${index}`;
       
       let browser;
@@ -630,7 +972,7 @@ export class CodeforcesAPI {
           'upgrade-insecure-requests': '1',
           'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
         });
-        console.log('正在访问页面:', url);
+        // 访问页面
          const response = await page.goto(url, { 
            waitUntil: 'domcontentloaded',
            timeout: 30000
@@ -638,7 +980,7 @@ export class CodeforcesAPI {
          console.log('HTTP状态码:', response?.status());
          // 等待页面完全加载，包括JavaScript渲染
          await page.waitForSelector('.problem-statement', { timeout: 15000 }).catch(() => {
-           console.log('等待页面元素加载...');
+           // 等待页面元素加载
          });
          
          // 额外等待确保内容完全加载
@@ -646,12 +988,12 @@ export class CodeforcesAPI {
          
          // 获取页面内容
          const content = await page.content();
-         console.log('成功获取页面内容，长度:', content.length);
+         // 成功获取页面内容
          
          const $ = cheerio.load(content);
          const problemStatement = this.parseProblemStatement($, contestId, index);
          
-         console.log('题目解析成功:', problemStatement.name);
+         // 题目解析成功
         
         await browser.close();
         
