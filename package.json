@@ -1,16 +1,19 @@
 {
   "name": "codeforces-api-tool",
-  "private": true,
   "version": "1.0.0",
   "type": "module",
+  "bin": {
+    "cf": "./dist/cli/index.js"
+  },
   "scripts": {
-    "build": "tsc -b",
+    "build": "tsc -b && chmod +x dist/cli/index.js",
     "lint": "eslint .",
     "check": "tsc --noEmit",
     "server:dev": "nodemon",
     "dev": "npm run server:dev",
     "cli": "tsx src/cli/index.ts",
-    "start": "node dist/server/index.js"
+    "start": "node dist/server/index.js",
+    "postinstall": "npm run build"
   },
   "dependencies": {
     "axios": "^1.6.0",

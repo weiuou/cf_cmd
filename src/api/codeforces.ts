@@ -750,7 +750,6 @@ export class CodeforcesAPI {
       if (sampleTest.length > 0) {
         const inputDiv = sampleTest.find('.input pre');
         const outputDiv = sampleTest.find('.output pre');
-        console.log(inputDiv)
         if (inputDiv.length > 0 && outputDiv.length > 0) {
           // 提取输入，正确处理test-example-line div标签
           const inputLines = inputDiv.find('.test-example-line');
