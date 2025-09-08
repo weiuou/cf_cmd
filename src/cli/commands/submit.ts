@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { codeforcesAPI } from '../../api/codeforces';
+import { codeforcesAPI } from '../../api/codeforces.js';
 import { SubmitCodeParams } from '../../types/index.js';
 import * as fs from 'fs';
 import * as path from 'path';

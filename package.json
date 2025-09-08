@@ -6,7 +6,7 @@
     "cf": "./dist/cli/index.js"
   },
   "scripts": {
-    "build": "tsc -b && chmod +x dist/cli/index.js",
+    "build": "tsc -b",
     "lint": "eslint .",
     "check": "tsc --noEmit",
     "server:dev": "nodemon",

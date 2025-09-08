@@ -1,12 +1,12 @@
 import { Command } from 'commander';
-import { codeforcesAPI } from '../../api/codeforces';
-import { httpClient } from '../../utils/http';
+import { codeforcesAPI } from '../../api/codeforces.js';
+import { httpClient } from '../../utils/http.js';
 import { LoginCredentials } from '../../types/index.js';
 import * as readline from 'readline';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { saveConfig, loadConfig } from '../../config';
+import { saveConfig, loadConfig } from '../../config/index.js';
 
 // 创建一个用于安全读取密码的函数
 function readPassword(query: string): Promise<string> {
