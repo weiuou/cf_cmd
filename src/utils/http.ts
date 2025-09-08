@@ -1,6 +1,10 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { getConfig } from '../config/index.js';
 import { ApiResponse } from '../types/index.js';
+import * as cheerio from 'cheerio';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 /**
  * HTTP客户端类
@@ -9,15 +13,31 @@ export class HttpClient {
   private client: AxiosInstance;
   private requestQueue: Array<() => Promise<any>> = [];
   private isProcessing = false;
+  private cookies: string[] = [];
+  private cookieFile: string;
 
   constructor() {
     const config = getConfig();
+    this.cookieFile = path.join(os.homedir(), '.cf-script', 'cookies.json');
+    
+    // 确保目录存在
+    const dir = path.dirname(this.cookieFile);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    
+    // 尝试加载已保存的Cookie
+    this.loadCookies();
+    
     this.client = axios.create({
       baseURL: config.api.baseUrl,
       timeout: config.api.timeout,
       headers: {
-        'User-Agent': 'CF-Tool/1.0.0'
-      }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8'
+      },
+      withCredentials: true
     });
 
     // 请求拦截器
@@ -66,6 +86,130 @@ export class HttpClient {
    */
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+  
+  /**
+   * 加载保存的Cookie
+   */
+  private loadCookies(): void {
+    try {
+      if (fs.existsSync(this.cookieFile)) {
+        const data = fs.readFileSync(this.cookieFile, 'utf8');
+        this.cookies = JSON.parse(data);
+        console.log('Cookies loaded from file');
+      }
+    } catch (error) {
+      console.error('Error loading cookies:', error);
+      this.cookies = [];
+    }
+  }
+  
+  /**
+   * 保存Cookie到文件
+   */
+  private saveCookies(): void {
+    try {
+      fs.writeFileSync(this.cookieFile, JSON.stringify(this.cookies), 'utf8');
+      console.log('Cookies saved to file');
+    } catch (error) {
+      console.error('Error saving cookies:', error);
+    }
+  }
+  
+  /**
+   * 更新Cookie
+   */
+  public updateCookies(newCookies: string[]): void {
+    if (newCookies && newCookies.length > 0) {
+      // 合并Cookie，避免重复
+      const cookieMap = new Map<string, string>();
+      
+      // 处理现有Cookie
+      this.cookies.forEach(cookie => {
+        const [name] = cookie.split('=');
+        cookieMap.set(name, cookie);
+      });
+      
+      // 处理新Cookie
+      newCookies.forEach(cookie => {
+        const [name] = cookie.split('=');
+        cookieMap.set(name, cookie);
+      });
+      
+      // 更新Cookie数组
+      this.cookies = Array.from(cookieMap.values());
+      
+      // 保存到文件
+      this.saveCookies();
+    }
+  }
+  
+  /**
+   * 获取当前Cookie
+   */
+  public getCookies(): string[] {
+    return this.cookies;
+  }
+  
+  /**
+   * 设置Cookie
+   * @param cookieString Cookie字符串
+   */
+  public setCookies(cookieString: string): void {
+    if (cookieString) {
+      const newCookies = cookieString.split('; ');
+      this.updateCookies(newCookies);
+    }
+  }
+  
+  /**
+   * 清除Cookie
+   */
+  public clearCookies(): void {
+    this.cookies = [];
+    this.saveCookies();
+  }
+  
+  /**
+   * 从HTML中提取CSRF令牌
+   */
+  public extractCsrfToken(html: string): string | null {
+    try {
+      const match = html.match(/csrf='(.+?)'/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+      return null;
+    } catch (error) {
+      console.error('Error extracting CSRF token:', error);
+      return null;
+    }
+  }
+  
+  /**
+   * 发送HTTP请求（直接使用axios，不经过API封装）
+   */
+  public async request<T = any>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+    // 添加Cookie到请求头
+    if (this.cookies.length > 0) {
+      config.headers = config.headers || {};
+      config.headers['Cookie'] = this.cookies.join('; ');
+    }
+    
+    try {
+      const response = await this.client(config);
+      
+      // 处理响应中的Set-Cookie头
+      const setCookieHeaders = response.headers['set-cookie'];
+      if (setCookieHeaders) {
+        this.updateCookies(setCookieHeaders);
+      }
+      
+      return response;
+    } catch (error: any) {
+      console.error(`Error in HTTP request to ${config.url}:`, error.message);
+      throw error;
+    }
   }
 
   /**

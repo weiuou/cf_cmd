@@ -1,5 +1,34 @@
 // Codeforces API 数据类型定义
 
+// 登录相关接口定义
+export interface LoginCredentials {
+  handleOrEmail: string;
+  password: string;
+  remember?: boolean;
+}
+
+export interface LoginResult {
+  success: boolean;
+  handle?: string;
+  error?: string;
+  cookies?: string[];
+}
+
+// 提交代码相关接口定义
+export interface SubmitCodeParams {
+  contestId: number;
+  problemIndex: string; // 如 'A', 'B1' 等
+  source: string;
+  programTypeId: number; // 编程语言ID
+  groupId?: string; // 小组比赛ID
+}
+
+export interface SubmitResult {
+  success: boolean;
+  submissionId?: number;
+  error?: string;
+}
+
 // Contest接口定义
 export interface Contest {
   id: number;
@@ -172,4 +201,5 @@ export enum StatementFormat {
 export interface AppConfig {
   api: ApiConfig;
   cache: CacheConfig;
+  handle?: string; // 用户的Codeforces用户名
 }

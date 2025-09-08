@@ -6,6 +6,8 @@ import { contestCommand } from './commands/contest.js';
 import { problemCommand } from './commands/problem.js';
 import { userCommand } from './commands/user.js';
 import { configCommand } from './commands/config.js';
+import { authCommand } from './commands/auth.js';
+import { submitCommand } from './commands/submit.js';
 
 const program = new Command();
 const config = getConfig();
@@ -20,5 +22,7 @@ program.addCommand(contestCommand);
 program.addCommand(problemCommand);
 program.addCommand(userCommand);
 program.addCommand(configCommand);
+program.addCommand(authCommand);
+program.addCommand(submitCommand);
 
 program.parse();

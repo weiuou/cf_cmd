@@ -26,7 +26,8 @@ const defaultConfig: AppConfig = {
     maxEntries: 1000,
     maxSize: 50 * 1024 * 1024, // 50MB
     cacheDir: join(homedir(), '.cf-tool', 'cache')
-  }
+  },
+  handle: '' // 初始为空字符串
 };
 
 // 配置文件路径

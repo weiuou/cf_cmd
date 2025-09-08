@@ -13,13 +13,276 @@ import {
   ApiResponse,
   ProblemStatement,
   Sample,
-  StatementFormat
+  StatementFormat,
+  LoginCredentials,
+  LoginResult,
+  SubmitCodeParams,
+  SubmitResult
 } from '../types/index.js';
 
 /**
  * Codeforces API 服务类
  */
 export class CodeforcesAPI {
+  /**
+   * 清除Cookie
+   */
+  clearCookies(): void {
+    httpClient.clearCookies();
+  }
+  // 生成随机的ftaa字符串
+  private generateFtaa(): string {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < 18; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+  
+  // 存储登录时生成的ftaa和bfaa
+  private ftaa: string = '';
+  private bfaa: string = 'f1b3f18c715565b589b7823cda7448ce';
+  
+  /**
+   * 检查是否已登录
+   * @returns 是否已登录
+   */
+  async isLoggedIn(): Promise<boolean> {
+    try {
+      // 访问个人主页，检查是否已登录
+      const response = await httpClient.request({
+        method: 'GET',
+        url: 'https://codeforces.com/'
+      });
+      
+      // 检查是否包含登录后才会出现的元素
+      const isLoggedIn = response.data.includes('logout') || 
+                         response.data.includes('class="user-name"') || 
+                         response.data.includes('class="lang-chooser"') && 
+                         response.data.includes('class="avatar"');
+      
+      console.log('登录状态检查:', isLoggedIn ? '已登录' : '未登录');
+      return isLoggedIn;
+    } catch (error) {
+      console.error('检查登录状态时出错:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 从保存的cookies文件中加载登录信息
+   * @returns 加载结果
+   */
+  async loadLoginFromFile(): Promise<LoginResult> {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const os = await import('os');
+      
+      const configDir = path.join(os.homedir(), '.cf-tool');
+      const cookiesFile = path.join(configDir, 'cookies.json');
+      
+      if (!fs.existsSync(cookiesFile)) {
+        return {
+          success: false,
+          error: '未找到保存的登录信息'
+        };
+      }
+      
+      const cookiesData = JSON.parse(fs.readFileSync(cookiesFile, 'utf8'));
+      
+      // 检查cookies是否过期（超过7天）
+      const now = Date.now();
+      const cookiesAge = now - cookiesData.timestamp;
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+      
+      if (cookiesAge > sevenDaysInMs) {
+        return {
+          success: false,
+          error: '登录信息已过期，请重新登录'
+        };
+      }
+      
+      // 将cookies设置到httpClient
+      const cookieString = cookiesData.cookies.map((cookie: any) => `${cookie.name}=${cookie.value}`).join('; ');
+      httpClient.setCookies(cookieString);
+      
+      // 验证登录状态
+      if (await this.isLoggedIn()) {
+        return {
+          success: true,
+          handle: cookiesData.handle
+        };
+      } else {
+        return {
+          success: false,
+          error: '登录信息无效，请重新登录'
+        };
+      }
+    } catch (error: any) {
+      console.error('加载登录信息时出错:', error.message);
+      return {
+        success: false,
+        error: `加载登录信息时出错: ${error.message}`
+      };
+    }
+  }
+  
+  /**
+   * 手动登录Codeforces方法已移除
+   * 现在使用新的登录方式代替
+   */
+  
+  /**
+   * 登录Codeforces
+   * @param credentials 登录凭证
+   * @returns 登录结果
+   */
+  async login(credentials: LoginCredentials): Promise<LoginResult> {
+    try {
+      // 清除之前的Cookie
+      httpClient.clearCookies();
+      
+      console.log('正在使用浏览器模拟登录...');
+      let browser;
+      
+      try {
+        // 使用Puppeteer启动浏览器 - 非无头模式，让用户可以看到浏览器
+        browser = await puppeteer.launch({
+          headless: false, // 非无头模式，显示浏览器窗口
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--window-size=1280,800'
+          ]
+        });
+        
+        const page = await browser.newPage();
+        
+        // 设置用户代理和视口
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0');
+        await page.setViewport({ width: 1280, height: 800 });
+        
+        // 访问登录页面
+        console.log('正在访问登录页面...');
+        const response = await page.goto('https://codeforces.com/enter', {
+          waitUntil: 'networkidle2',
+          timeout: 30000
+        });
+        
+        console.log('HTTP状态码:', response?.status());
+        
+        // 自动填写用户名和密码
+        if (credentials.handleOrEmail && credentials.password) {
+          await page.evaluate((handleOrEmail, password) => {
+            const handleInput = document.getElementById('handleOrEmail') as HTMLInputElement;
+            const passwordInput = document.getElementById('password') as HTMLInputElement;
+            const rememberInput = document.getElementById('remember') as HTMLInputElement;
+            
+            if (handleInput) handleInput.value = handleOrEmail;
+            if (passwordInput) passwordInput.value = password;
+            if (rememberInput) rememberInput.checked = true;
+          }, credentials.handleOrEmail, credentials.password);
+        }
+        
+        console.log('请在浏览器中完成登录操作，包括验证码（如果有）...');
+        console.log('登录成功后，浏览器将自动关闭...');
+        
+        // 等待用户在浏览器中完成登录
+        // 等待重定向到主页或用户页面，表示登录成功
+        await Promise.race([
+          page.waitForNavigation({ timeout: 120000 }), // 等待导航完成，最多等待2分钟
+          page.waitForSelector('.lang-chooser a.user-name', { timeout: 120000 }) // 等待用户名元素出现
+        ]);
+        
+        // 等待一下确保页面加载完成
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // 检查是否登录成功
+        const isLoggedIn = await page.evaluate(() => {
+          // 检查是否有用户名元素
+          const userElement = document.querySelector('.lang-chooser a.user-name') as HTMLElement;
+          if (userElement) {
+            return { success: true, handle: userElement.textContent?.trim() };
+          }
+          
+          // 尝试从页面内容中提取handle
+          const scripts = Array.from(document.querySelectorAll('script'));
+          for (const script of scripts) {
+            const content = script.textContent || '';
+            const match = content.match(/handle = "([^"]+)"/i);
+            if (match && match[1]) {
+              return { success: true, handle: match[1] };
+            }
+          }
+          
+          return { success: false, error: '无法确定登录状态' };
+        });
+        
+        console.log('登录状态检查结果:', isLoggedIn);
+        
+        if (isLoggedIn.success && isLoggedIn.handle) {
+          // 提取Cookies
+          const cookies = await page.cookies();
+          const cookieString = cookies.map(cookie => `${cookie.name}=${cookie.value}`).join('; ');
+          
+          // 将Cookies设置到httpClient
+          httpClient.setCookies(cookieString);
+          
+          // 保存cookies到文件
+          const cookiesData = {
+            cookies: cookies,
+            handle: isLoggedIn.handle,
+            timestamp: Date.now()
+          };
+          
+          // 保存cookies到文件
+          const fs = await import('fs');
+          const path = await import('path');
+          const os = await import('os');
+          
+          const configDir = path.join(os.homedir(), '.cf-tool');
+          if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+          }
+          
+          const cookiesFile = path.join(configDir, 'cookies.json');
+          fs.writeFileSync(cookiesFile, JSON.stringify(cookiesData, null, 2));
+          console.log('Cookies saved to file');
+          
+          console.log(`成功登录为: ${isLoggedIn.handle}`);
+          await browser.close();
+          
+          return {
+            success: true,
+            handle: isLoggedIn.handle,
+            cookies: cookieString
+          };
+        } else {
+          console.error('登录失败:', isLoggedIn.error || '未知错误');
+          await browser.close();
+          return {
+            success: false,
+            error: isLoggedIn.error || '登录失败，请检查用户名和密码'
+          };
+        }
+      } catch (puppeteerError: any) {
+        console.error('浏览器模拟登录错误:', puppeteerError.message);
+        if (browser) {
+          await browser.close();
+        }
+        throw puppeteerError;
+      }
+    } catch (error: any) {
+      console.error('登录过程中发生错误:', error.message);
+      return {
+        success: false,
+        error: `登录过程中发生错误: ${error.message}`
+      };
+    }
+  }
   /**
    * 获取竞赛列表
    */
@@ -126,6 +389,121 @@ export class CodeforcesAPI {
   /**
    * 获取用户信息
    */
+  /**
+   * 提交代码
+   * @param params 提交参数
+   * @returns 提交结果
+   */
+  async submitCode(params: SubmitCodeParams): Promise<SubmitResult> {
+    try {
+      // 检查是否已登录
+      if (!httpClient.getCookies().length) {
+        return {
+          success: false,
+          error: '请先登录再提交代码'
+        };
+      }
+      
+      // 1. 构建提交URL
+      let submitUrl = '';
+      if (params.groupId) {
+        // 小组比赛
+        submitUrl = `/group/${params.groupId}/contest/${params.contestId}/submit`;
+      } else {
+        // 普通比赛
+        submitUrl = `/contest/${params.contestId}/submit`;
+      }
+      
+      // 2. 获取提交页面和CSRF令牌
+      console.log(`正在获取提交页面: ${submitUrl}`);
+      const submitPageResponse = await httpClient.request({
+        method: 'GET',
+        url: `https://codeforces.com${submitUrl}`
+      });
+      
+      const csrfToken = httpClient.extractCsrfToken(submitPageResponse.data);
+      if (!csrfToken) {
+        throw new Error('无法获取CSRF令牌');
+      }
+      console.log('成功获取CSRF令牌:', csrfToken);
+      
+      // 3. 提交代码
+      console.log('正在提交代码...');
+      const formData = new URLSearchParams();
+      formData.append('csrf_token', csrfToken);
+      formData.append('ftaa', this.ftaa);
+      formData.append('bfaa', this.bfaa);
+      formData.append('action', 'submitSolutionFormSubmitted');
+      formData.append('submittedProblemIndex', params.problemIndex);
+      formData.append('programTypeId', params.programTypeId.toString());
+      formData.append('contestId', params.contestId.toString());
+      formData.append('source', params.source);
+      formData.append('tabSize', '4');
+      formData.append('_tta', '594');
+      formData.append('sourceCodeConfirmed', 'true');
+      
+      const submitResponse = await httpClient.request({
+        method: 'POST',
+        url: `https://codeforces.com${submitUrl}?csrf_token=${csrfToken}`,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        data: formData.toString(),
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400
+      });
+      
+      // 4. 验证提交结果
+      if (submitResponse.status === 302) {
+        // 重定向表示提交成功
+        console.log('代码提交成功');
+        
+        // 尝试从重定向URL中提取提交ID
+        const location = submitResponse.headers.location;
+        let submissionId: number | undefined;
+        
+        if (location) {
+          const match = location.match(/submission\/(\d+)/i);
+          if (match && match[1]) {
+            submissionId = parseInt(match[1], 10);
+          }
+        }
+        
+        return {
+          success: true,
+          submissionId
+        };
+      }
+      
+      // 检查错误信息
+      const $ = cheerio.load(submitResponse.data);
+      const errorElement = $('.error');
+      let errorMessage = errorElement.text().trim();
+      
+      if (!errorMessage) {
+        // 尝试使用正则表达式提取错误信息
+        const errorMatch = submitResponse.data.match(/error[a-zA-Z_\-\ ]*">(.*?)<\/span>/i);
+        if (errorMatch && errorMatch[1]) {
+          errorMessage = errorMatch[1];
+        } else {
+          errorMessage = '提交失败，但未找到具体错误信息';
+        }
+      }
+      
+      console.error('提交失败:', errorMessage);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    } catch (error: any) {
+      console.error('提交过程中发生错误:', error.message);
+      return {
+        success: false,
+        error: `提交过程中发生错误: ${error.message}`
+      };
+    }
+  }
+  
   async getUserInfo(handles: string[]): Promise<User[]> {
     const handlesParam = handles.join(';');
     const cacheKey = `users_${handlesParam}`;
